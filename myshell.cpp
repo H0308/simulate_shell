@@ -7,36 +7,61 @@ char input_arr[BaseSize];
 char* global_argv[BaseSize];
 // 参数个数
 int global_argc;
-
 // 环境变量表
 char* global_env[BaseSize];
 // 声明父进程的环境变量表
 extern char** environ;
+// 退出码
+int exitCode;
+// 自定义退出状态
+enum exitStatus
+{
+    NORMAL, // 进程正常退出
+    FAILED, // 正常退出但是没有完成任务
+    INTERRUPT // 异常退出 
+};
+
+// std::string getCwd()
+// {
+//     char current_wd[BaseSize];
+//     getcwd(current_wd, BaseSize);
+//     std::string s1(current_wd);
+//     if(s1.size() == 1)
+//     {
+//         return s1;
+//     }
+//     std::string ret;
+//     // 反向遍历字符串，直到遇到第一个/
+//     auto rit = s1.rbegin();
+//     while(rit != s1.rend())
+//     {
+//         if((*rit) == '/')
+//             break;
+//         ret.push_back((*rit));
+//         ++rit;
+//     }
+// 
+//     // 反转字符串
+//     reverse(ret.begin(), ret.end()); 
+//     
+//     return ret;
+// }
 
 std::string getCwd()
-{
+{    
     char current_wd[BaseSize];
     getcwd(current_wd, BaseSize);
-    std::string s1(current_wd);
-    if(s1.size() == 1)
+    std::string user(current_wd);
+    // 如果是根目录，直接返回/
+    if (user.size() == 1)
     {
-        return s1;
-    }
-    std::string ret;
-    // 反向遍历字符串，直到遇到第一个/
-    auto rit = s1.rbegin();
-    while(rit != s1.rend())
-    {
-        if((*rit) == '/')
-            break;
-        ret.push_back((*rit));
-        ++rit;
+        return user;
     }
 
-    // 反转字符串
-    reverse(ret.begin(), ret.end()); 
-    
-    return ret;
+    // 否则从末尾向前找倒数第一个/
+    size_t pos = user.rfind("/");
+    // 返回找到后的字符串进行截取
+    return user.substr(pos + 1);
 }
 
 void printfCommandHint()
@@ -104,8 +129,24 @@ void executeProgram()
         exit(0);
     }
 
+    // 存储进程退出码
+    int status = 0;
     // 父进程等待
-    waitpid(id, nullptr, 0);
+    pid_t rid = waitpid(id, &status, 0);
+    // 正常回收情况下
+    if(rid > 0)
+    {
+        if(WIFEXITED(status))
+        {
+            // 正常退出码
+            exitCode = WEXITSTATUS(status);
+        }
+        else if(WIFSIGNALED(status)) 
+        {
+            // 被信号终止
+            exitCode = WTERMSIG(status);
+        }
+    }
 }
 
 bool checkIfBuiltInAndExecute()
@@ -131,6 +172,7 @@ bool checkIfBuiltInAndExecute()
            {
                 chdir(global_argv[1]);
            }
+           exitCode = NORMAL;
            return true;
        }
    }
@@ -145,6 +187,7 @@ bool checkIfBuiltInAndExecute()
            global_env[i] = (char*)malloc(sizeof(strlen(global_argv[1])));
            strncpy(global_env[i], global_argv[1], (strlen(global_argv[1]) + 1));
            global_env[++i] = nullptr;
+           exitCode = NORMAL;
            return true;
        }
    }
@@ -154,9 +197,26 @@ bool checkIfBuiltInAndExecute()
        {
            printf("%s\n", global_env[i]);
        }
+       exitCode = NORMAL;
        return true;
    }
-
+   else if(strcmp(global_argv[0], "echo") == 0)
+   {
+       // 获取第二个参数的第一个字符和第二个字符
+       if(global_argv[1][0] == '$' && global_argv[1][1])
+       {
+           printf("%d\n", exitCode);
+       }
+       else 
+       {
+           // 直接输出字符串
+           printf("%s\n", global_argv[1]);
+       }
+       // 将上一次的退出码置为0
+       exitCode = NORMAL;
+       return true;
+   }
+   exitCode = FAILED;
    return false;
 }
 
