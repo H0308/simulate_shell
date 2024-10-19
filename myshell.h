@@ -7,6 +7,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <algorithm>
+
+const int BaseSize = 1024;
+
 // 打印控制台内容
 void printfCommandHint();
 

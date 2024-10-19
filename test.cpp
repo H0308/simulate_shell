@@ -1,12 +1,12 @@
 #include "myshell.h"
 using namespace std;
 
-extern const int BaseSize = 1024;
 extern char* global_argv[BaseSize];
 extern int global_argc;
 
 int main()
 {
+    cout << BaseSize << endl;
     initShell();
     while(true)
     {

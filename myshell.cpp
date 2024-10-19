@@ -1,6 +1,5 @@
 #include "myshell.h"
 
-const int BaseSize = 1024;
 // 存储用户的输入的数组
 char input_arr[BaseSize];
 // 命令行参数表
