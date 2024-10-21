@@ -8,6 +8,11 @@
 #include <sys/wait.h>
 #include <algorithm>
 #include <cctype>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 const int BaseSize = 1024;
 
 // 跳过空白字符
@@ -18,7 +23,17 @@ const int BaseSize = 1024;
     }\
 }while(0)
 
-inline void trim(char* pos) 
+// 二级指针
+// inline void trim(char** pos) 
+// {
+//     while(isspace(*(*pos)))
+//     {
+//         (*pos)++;
+//     }
+// }
+
+// 指针引用
+inline void trim(char*& pos)
 {
     while(isspace(*pos))
     {

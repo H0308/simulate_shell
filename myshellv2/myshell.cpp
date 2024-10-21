@@ -17,7 +17,9 @@ enum exitStatus
 {
     NORMAL, // 进程正常退出
     FAILED, // 正常退出但是没有完成任务
-    INTERRUPT // 异常退出 
+    INTERRUPT, // 异常退出 
+    FILEOPENFAIL, // 文件打开失败
+    FILENOTEXISTS // 文件不存在
 };
 // 重定向状态
 enum redirStatus
@@ -128,7 +130,7 @@ void parseInput()
     redirCode = NONE;
     filename = nullptr;
 
-    printf("command start: %s\n", input_arr);
+    // printf("command start: %s\n", input_arr);
     // 判断是否存在重定向符号
     size_t end = strlen(input_arr) - 1;
     while(end)
@@ -179,9 +181,9 @@ void parseInput()
         }
     }
     
-    printf("redir: %d\n", redirCode);
-    printf("filename: %s\n", filename);
-    printf("command end: %s\n", input_arr);
+    // printf("redir: %d\n", redirCode);
+    // printf("filename: %s\n", filename);
+    // printf("command end: %s\n", input_arr);
 
     // 拆分读取的字符串
     for(char* ch = strtok(input_arr, " "); (bool)ch; ch = strtok(nullptr, " "))
@@ -195,6 +197,64 @@ void executeProgram()
     pid_t id = fork();
     if(id == 0)
     {
+        // 判断是哪一种重定向
+        if(redirCode == TRUNCATE)
+        {
+            // 输出重定向
+            // 1. 打开文件
+            // 确保文件不为空
+            if(filename)
+            {
+                int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+                if(fd < 0)
+                {
+                    exit(FILEOPENFAIL);
+                }
+                // 2. 重定向stdout文件为新创文件
+                dup2(fd, stdout->_fileno);
+            }
+            else 
+            {
+                exit(FILENOTEXISTS);
+            }
+        }
+        else if(redirCode == APPEND)
+        {
+            if(filename)
+            {
+                int fd = open(filename, O_CREAT | O_WRONLY | O_APPEND, 0666);
+                if(fd < 0)
+                {
+                    exit(FILEOPENFAIL);
+                }
+                // 2. 重定向stdout文件为新创文件
+                dup2(fd, stdout->_fileno);
+            }
+            else
+            {
+                exit(FILENOTEXISTS);
+            }
+        }
+        else if(redirCode == INPUT)
+        { 
+            if(filename)
+            {
+                int fd = open(filename, O_RDONLY);
+                if(fd < 0)
+                {
+                    exit(FILEOPENFAIL);
+                }
+                // 2. 重定向stdout文件为新创文件
+                dup2(fd, stdin->_fileno);
+            }
+            else
+            {
+                exit(FILENOTEXISTS);
+            }
+        }
+        // 重定向后恢复redirCode标记便于下次使用
+        redirCode = NONE;
+        // 程序替换
         execvpe(global_argv[0], global_argv, global_env);
         exit(0);
     }
